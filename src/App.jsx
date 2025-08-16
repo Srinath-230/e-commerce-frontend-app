@@ -113,6 +113,7 @@ const App = () => {
         setValue('name', product.name);
         setValue('description', product.description);
         setValue('price', product.price);
+        setValue('imageUrl', product.imageUrl || '');
         setIsModalOpen(true);
     };
 
@@ -150,7 +151,7 @@ const App = () => {
                                     products.map((product) => (
                                         <div key={product.id} className="bg-white rounded-2xl shadow-lg overflow-hidden transition-transform transform hover:scale-105 duration-300">
                                             <img 
-                                                src={`https://placehold.co/600x400/312e81/ffffff?text=${encodeURIComponent(product.name)}`}
+                                                src={product.imageUrl || `https://placehold.co/600x400/312e81/ffffff?text=${encodeURIComponent(product.name)}`}
                                                 alt={product.name}
                                                 className="w-full h-48 object-cover"
                                             />
@@ -247,6 +248,15 @@ const App = () => {
                             className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                         />
                         {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price.message}</p>}
+                    </div>
+                    <div>
+                        <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700">Image URL</label>
+                        <input
+                            id="imageUrl"
+                            type="url"
+                            {...register('imageUrl')}
+                            className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                        />
                     </div>
                     <div className="flex justify-end space-x-3">
                         <button 
