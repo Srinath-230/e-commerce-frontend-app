@@ -1,5 +1,5 @@
 import React from 'react';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, ShoppingCartIcon } from '@heroicons/react/24/outline';
 
 const Header = ({ onAddProduct, onNavigate, showAddProductButton }) => {
     return (
@@ -21,8 +21,11 @@ const Header = ({ onAddProduct, onNavigate, showAddProductButton }) => {
                             <span className="hidden sm:inline">Add Product</span>
                         </button>
                     ) : (
-                        <div className="w-[140px] h-[40px]"></div> // A placeholder to keep the alignment
+                        <div className="w-[140px] h-[40px]"></div>
                     )}
+                    <button onClick={() => onNavigate('cart')} className="bg-gray-200 text-gray-600 hover:bg-gray-300 p-2 rounded-full transition-colors shadow-md">
+                        <ShoppingCartIcon className="h-6 w-6" />
+                    </button>
                 </div>
             </div>
         </header>

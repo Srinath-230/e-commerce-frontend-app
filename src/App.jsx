@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { PlusIcon, PencilSquareIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilSquareIcon, TrashIcon, XMarkIcon, ShoppingCartIcon } from '@heroicons/react/24/outline';
 import { useForm } from 'react-hook-form';
 
 // Import all your new components
@@ -8,6 +8,7 @@ import Header from './Header.jsx';
 import Footer from './Footer.jsx';
 import HomePage from './HomePage.jsx';
 import ContactPage from './ContactPage.jsx';
+import CartPage from './CartPage.jsx';
 
 // A modal component for creating and updating products
 const Modal = ({ children, isOpen, onClose }) => {
@@ -29,26 +30,49 @@ const Modal = ({ children, isOpen, onClose }) => {
     );
 };
 
+const ConfirmationModal = ({ message, onClose, isOpen }) => {
+    if (!isOpen) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[1000] animate-fade-in">
+            <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-sm text-center relative animate-slide-in-up">
+                <p className="text-lg font-semibold text-gray-800 mb-4">{message}</p>
+                <button 
+                    onClick={onClose} 
+                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors shadow-md"
+                >
+                    OK
+                </button>
+            </div>
+        </div>,
+        document.body
+    );
+};
+
 // Main App component
 const App = () => {
     const [products, setProducts] = useState([]);
+    const [cartItems, setCartItems] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
     const [currentPage, setCurrentPage] = useState('home');
-    const API_URL = "https://e-commerce-backend-api-1c2f.onrender.com/api/products";
+    const [confirmation, setConfirmation] = useState({ message: '', isOpen: false });
+    const API_URL = "https://e-commerce-backend-api-1c2f.onrender.com";
     const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
 
     useEffect(() => {
         if (currentPage === 'products') {
             fetchProducts();
+        } else if (currentPage === 'cart') {
+            fetchCartItems();
         }
     }, [currentPage]);
 
     const fetchProducts = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch(API_URL);
+            const response = await fetch(`${API_URL}/api/products`);
             if (!response.ok) {
                 throw new Error('Failed to fetch products');
             }
@@ -62,10 +86,27 @@ const App = () => {
         }
     };
 
+    const fetchCartItems = async () => {
+        setIsLoading(true);
+        try {
+            const response = await fetch(`${API_URL}/api/cart`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch cart items');
+            }
+            const data = await response.json();
+            setCartItems(data);
+        } catch (error) {
+            console.error("Error fetching cart items:", error);
+            alert("Error fetching cart items from the server. Check your network connection.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const onSubmit = async (data) => {
         try {
             const method = editingProduct ? 'PUT' : 'POST';
-            const url = editingProduct ? `${API_URL}/${editingProduct.id}` : API_URL;
+            const url = editingProduct ? `${API_URL}/api/products/${editingProduct.id}` : `${API_URL}/api/products`;
             const response = await fetch(url, {
                 method,
                 headers: {
@@ -89,7 +130,7 @@ const App = () => {
             return;
         }
         try {
-            const response = await fetch(`${API_URL}/${id}`, {
+            const response = await fetch(`${API_URL}/api/products/${id}`, {
                 method: 'DELETE',
             });
             if (!response.ok) {
@@ -99,6 +140,27 @@ const App = () => {
         } catch (error) {
             console.error("Error deleting product:", error);
             alert("Error deleting product from the server.");
+        }
+    };
+
+    const handleAddToCart = async (productId) => {
+        const existingCartItem = cartItems.find(item => item.productId === productId);
+        let newQuantity = 1;
+        if (existingCartItem) {
+            newQuantity = existingCartItem.quantity + 1;
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/api/cart`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ productId: productId, quantity: newQuantity })
+            });
+            if (!response.ok) throw new Error('Failed to add to cart');
+            fetchCartItems();
+        } catch (error) {
+            console.error("Error adding to cart:", error);
+            alert("Error adding item to cart.");
         }
     };
 
@@ -121,6 +183,70 @@ const App = () => {
         setIsModalOpen(false);
         setEditingProduct(null);
         reset();
+    };
+
+    const getProductDetails = (productId) => {
+        return products.find(p => p.id === productId);
+    };
+
+    const renderCartPage = () => {
+        if (isLoading) {
+            return (
+                <div className="flex justify-center items-center h-40">
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-b-indigo-500 border-gray-200"></div>
+                </div>
+            );
+        }
+
+        return (
+            <main className="flex-grow container mx-auto p-8">
+                <h1 className="text-4xl font-extrabold text-gray-900 mb-6">Your Cart</h1>
+                {cartItems.length > 0 ? (
+                    <div className="space-y-4">
+                        {cartItems.map((item) => {
+                            const product = getProductDetails(item.productId);
+                            if (!product) return null;
+
+                            return (
+                                <div key={item.id} className="flex items-center bg-white p-4 rounded-2xl shadow-lg">
+                                    <img 
+                                        src={product.imageUrl || `https://placehold.co/100x100/312e81/ffffff?text=${encodeURIComponent(product.name)}`}
+                                        alt={product.name}
+                                        className="w-24 h-24 object-cover rounded-xl mr-4"
+                                    />
+                                    <div className="flex-grow">
+                                        <h3 className="text-xl font-semibold text-gray-800">{product.name}</h3>
+                                        <p className="text-gray-600">Quantity: {item.quantity}</p>
+                                        <p className="text-2xl font-bold text-indigo-600">${(product.price * item.quantity).toFixed(2)}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => handleDeleteCartItem(item.id)}
+                                        className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors"
+                                    >
+                                        <TrashIcon className="h-5 w-5" />
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="text-center text-gray-500 text-lg h-40 flex items-center justify-center">
+                        Your cart is empty.
+                    </div>
+                )}
+            </main>
+        );
+    };
+
+    const handleDeleteCartItem = async (itemId) => {
+        try {
+            const response = await fetch(`${API_URL}/api/cart/${itemId}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Failed to delete item from cart');
+            fetchCartItems();
+        } catch (error) {
+            console.error("Error deleting from cart:", error);
+            alert("Error deleting item from cart.");
+        }
     };
 
     const renderPage = () => {
@@ -151,7 +277,7 @@ const App = () => {
                                     products.map((product) => (
                                         <div key={product.id} className="bg-white rounded-2xl shadow-lg overflow-hidden transition-transform transform hover:scale-105 duration-300">
                                             <img 
-                                                src={product.imageUrl || `https://placehold.co/600x400/312e81/ffffff?text=${encodeURIComponent(product.name)}`}
+                                                src={product.imageUrl ? product.imageUrl : `https://placehold.co/600x400/312e81/ffffff?text=${encodeURIComponent(product.name)}`}
                                                 alt={product.name}
                                                 className="w-full h-48 object-cover"
                                             />
@@ -175,6 +301,13 @@ const App = () => {
                                                         >
                                                             <TrashIcon className="h-5 w-5" />
                                                         </button>
+                                                        <button
+                                                            onClick={() => handleAddToCart(product.id)}
+                                                            className="bg-indigo-500 text-white p-2 rounded-full hover:bg-indigo-600 transition-colors"
+                                                            title="Add to Cart"
+                                                        >
+                                                            <ShoppingCartIcon className="h-5 w-5" />
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -190,11 +323,9 @@ const App = () => {
                     </main>
                 );
             case 'contact':
-                return (
-                    <main className="flex-grow container mx-auto p-8">
-                        <ContactPage />
-                    </main>
-                );
+                return <ContactPage />;
+            case 'cart':
+                return renderCartPage();
             default:
                 return (
                     <main className="flex-grow container mx-auto p-8">
